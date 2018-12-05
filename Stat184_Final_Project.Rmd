@@ -1,0 +1,109 @@
+---
+title: "Stat184_Final_Project"
+output: html_notebook
+---
+
+
+```{r}
+library(rvest)
+library(lubridate)
+library(tidyverse)
+library(DataComputing)
+library(mosaic)
+library(party)
+```
+
+
+```{r}
+url <- "https://www.sports-reference.com/cbb/seasons/2018-school-stats.html"
+XPATH <- '//*[@id="basic_school_stats"]'
+
+JapanData <- url %>%
+  read_html()%>%
+  html_nodes(xpath = XPATH) %>%
+  html_table(fill = TRUE)
+
+Data_2018 <- JapanData[[1]]
+```
+
+
+```{r}
+head(Data_2018)
+```
+
+```{r}
+names(Data_2018)[c(1,2,3,4,5)] <- c("Ranking", "School_Name", "Games", "Wins", "Losses")
+names(Data_2018)[c(6,7,8,9,10,11,12,13,14,15,16)] <- c("W/L_Percentage", "SRS", "SOS", "Conference_Wins", "Conference_Losses", "Home_Wins", "Home_Losses","Away_Wins", "Away_Losses","Points_For", "Points_Against")
+names(Data_2018)[c(17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34)] <- c("N/A","Minutes_Played", "FGM", "FGA","FG_Percentage", "3s_Made","3s_Attempted", "3s_Percentage","FTM", "FTA", "FT_Percentage","ORB", "TRB", "Assists", "Steals","Blocks","Turnovers","Personal_Fouls")
+```
+
+```{r}
+Data_2018 <-
+Data_2018 %>%
+  filter(row_number() > 1)
+
+```
+
+```{r}
+Data_2018 <-
+  Data_2018 %>%
+  mutate(Wins = as.numeric(Wins), Losses= as.numeric(Losses), Games = as.numeric(Games), SRS= as.numeric(SRS), SOS = as.numeric(SOS), Conference_Wins = as.numeric(Conference_Wins), Conference_Losses= as.numeric(Conference_Losses), FT_Percentage = as.numeric(FT_Percentage), `3s_Percentage` = as.numeric(`3s_Percentage`))
+```
+
+```{r}
+Data_2018 <-
+  Data_2018 %>%
+  mutate(FT_Level = if_else(FT_Percentage > .7636, "Very Good", if_else( FT_Percentage > .7172, "Good", if_else(FT_Percentage > .6708, "Average", if_else(FT_Percentage > .6244, "Bad", if_else(FT_Percentage > 0, "Very Bad", "ERROR"))))))
+
+```
+
+```{r}
+Data_2018 %>%
+  ggplot(aes(group = FT_Level)) +
+  geom_boxplot(aes(y = Wins, x = FT_Level))
+
+```
+
+
+```{r}
+StateList <- Data_2018 %>%
+  filter(grepl("State$", School_Name, ignore.case = TRUE))
+```
+
+```{r}
+NewStateList <- Data_2018 %>%
+  mutate(StateinName = if_else(grepl("State$", School_Name, ignore.case = TRUE), "YES", "NO"))
+head(NewStateList)
+```
+
+```{r}
+NewStateList %>%
+  ggplot(aes(group = StateinName)) +
+  geom_boxplot(aes(y = Wins, x = StateinName))
+```
+
+```{r}
+CompleteCases <-
+  Data_2018 %>%
+  select(Wins, FT_Percentage, FG_Percentage, ORB) %>%
+  na.omit()
+CompleteCases %>% nrow()
+  
+```
+
+```{r}
+WinTree <- party::ctree(
+  Wins ~ FT_Percentage, FG_Percentage, data = CompleteCases )
+plot(WinTree, type = "simple")
+```
+
+
+
+
+
+
+
+
+
+
+
